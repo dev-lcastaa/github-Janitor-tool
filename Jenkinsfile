@@ -11,6 +11,7 @@ pipeline {
   stages {
 
     stage('Build') {
+      notifyDiscord("Build started on branch ${env.BRANCH_NAME}")
       when {
         expression {
           return isBuildOrPR(env.BRANCH_NAME)
@@ -143,6 +144,18 @@ pipeline {
       }
     }
 
+    post {
+        success {
+          sendDiscord("Pipeline *SUCCESSFUL* for branch `${env.BRANCH_NAME}`")
+        }
+        failure {
+          sendDiscord("Pipeline *FAILED* for branch `${env.BRANCH_NAME}`")
+        }
+        always {
+          echo 'Pipeline finished.'
+        }
+      }
+    }
 
   }
 }
@@ -154,4 +167,15 @@ def isBuildOrPR(String branch) {
 
 def isFullDeployBranch(String branch) {
   return branch ==~ /main|develop/ || branch?.startsWith("feature/")
+}
+
+def notifyDiscord(String message) {
+  withCredentials([string(credentialsId: 'discord-webhook', variable: 'DISCORD_WEBHOOK')]) {
+    sh """
+      curl -H "Content-Type: application/json" \
+           -X POST \
+           -d '{ "content": "${message}" }' \
+           $DISCORD_WEBHOOK
+    """
+  }
 }
