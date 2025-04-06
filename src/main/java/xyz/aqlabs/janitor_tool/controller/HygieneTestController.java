@@ -22,7 +22,7 @@ public class HygieneTestController {
     public ResponseEntity<?> testRunJanitor(){
        SweeperStatus status = scheduler.triggeredRun();
         if(status.equals(SweeperStatus.SUCCESSFUL))
-            return ResponseEntity.ok("{\"msg\" : \"Sweeper Ran Successfully\"}");
+            return ResponseEntity.ok("{\"msg\" : \"Manual trigger of sweeper ran successfully\"}");
         return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
