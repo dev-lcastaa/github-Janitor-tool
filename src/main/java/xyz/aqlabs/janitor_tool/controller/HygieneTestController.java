@@ -16,7 +16,7 @@ public class HygieneTestController {
     @Autowired
     private Scheduler scheduler;
 
-    @GetMapping(path = "/run-test")
+    @GetMapping(path = "/run")
     public ResponseEntity<?> testRunJanitor(){
        SweeperStatus status = scheduler.triggeredRun();
         if(status.equals(SweeperStatus.SUCCESSFUL))
