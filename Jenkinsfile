@@ -178,7 +178,7 @@ def notifyDiscord(String message) {
     sh """
       curl -H "Content-Type: application/json" \
            -X POST \
-           -d '{ "content": "${message}" }' \
+           -d '{ "content": "@everyone ${message}" }' \
            $DISCORD_WEBHOOK
     """
   }
