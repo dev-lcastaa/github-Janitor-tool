@@ -118,7 +118,6 @@ pipeline {
                error("❌ Application health check failed after ${retries} attempts.")
              }
            }
-         }
        }
      }
 
