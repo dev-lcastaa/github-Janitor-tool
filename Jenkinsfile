@@ -91,10 +91,13 @@ pipeline {
         }
       }
       steps {
-         sh """
-         docker compose pull
-         docker compose up -d
-         """
+         withCredentials([usernamePassword(credentialsId: 'docker-login', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+           sh """
+              echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+              docker compose pull
+           """
+         }
+         sh "docker compose up -d"
       }
     }
 
