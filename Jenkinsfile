@@ -97,7 +97,7 @@ pipeline {
               docker compose pull
            """
          }
-         sh "docker compose up -d"
+         sh "docker compose up -d --force-recreate"
       }
     }
 
@@ -107,18 +107,19 @@ pipeline {
          def retries = 10
          def healthCheckPassed = false
          for (int i = 0; i < retries; i++) {
-           def response = sh(script: "curl -s http://localhost:9001/actuator/health", returnStdout: true).trim()
+           echo "Checking Application health...."
+           def response = sh(script: "curl -s http://192.168.0.100:9001/actuator/health", returnStdout: true).trim()
              if (response.contains('"status":"UP"')) {
-               echo "✅ Application is healthy!"
+               echo "Application is healthy!"
                healthCheckPassed = true
                break
              } else {
-               echo "⏳ Waiting for app to become healthy... ($i/${retries})"
+               echo "Waiting for app to become healthy... ($i/${retries})"
                sleep(5)
                }
              }
              if (!healthCheckPassed) {
-               error("❌ Application health check failed after ${retries} attempts.")
+               error("Application health check failed after ${retries} attempts.")
              }
            }
        }
