@@ -108,7 +108,7 @@ pipeline {
          def healthCheckPassed = false
          for (int i = 0; i < retries; i++) {
            echo "Checking Application health...."
-           def response = sh(script: "curl -s http://192.168.0.100:9001/actuator/health", returnStdout: true).trim()
+           def response = sh(script: "curl -s http://192.168.1.100:9001/actuator/health", returnStdout: true).trim()
              if (response.contains('"status":"UP"')) {
                echo "Application is healthy!"
                healthCheckPassed = true
