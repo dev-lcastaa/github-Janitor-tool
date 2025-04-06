@@ -5,18 +5,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.aqlabs.janitor_tool.models.SweeperStatus;
 import xyz.aqlabs.janitor_tool.scheduler.Scheduler;
 
 @Slf4j
-@RestController("/api/v1/janitor")
+@RestController
+@RequestMapping("/api/v1/janitor")
 public class HygieneTestController {
 
     @Autowired
     private Scheduler scheduler;
 
-    @GetMapping(path = "/run")
+    @GetMapping("/run")
     public ResponseEntity<?> testRunJanitor(){
        SweeperStatus status = scheduler.triggeredRun();
         if(status.equals(SweeperStatus.SUCCESSFUL))
