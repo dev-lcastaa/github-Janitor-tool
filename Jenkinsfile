@@ -156,9 +156,7 @@ pipeline {
         }
       }
     }
-
   }
-}
 
 // These helper methods are scoped for `when` conditions
 def isBuildOrPR(String branch) {
