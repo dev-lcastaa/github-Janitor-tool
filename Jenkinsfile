@@ -102,28 +102,39 @@ pipeline {
     }
 
     stage('Verify Deployment') {
-     steps {
-       script {
-         def retries = 10
-         def healthCheckPassed = false
-         for (int i = 0; i < retries; i++) {
-           echo "Checking Application health...."
-           def response = sh(script: "curl -s http://192.168.1.100:9001/actuator/health", returnStdout: true).trim()
-             if (response.contains('"status":"UP"')) {
-               echo "Application is healthy!"
-               healthCheckPassed = true
-               break
-             } else {
-               echo "Waiting for app to become healthy... ($i/${retries})"
-               sleep(5)
-               }
-             }
-             if (!healthCheckPassed) {
-               error("Application health check failed after ${retries} attempts.")
-             }
-           }
-       }
-     }
+      steps {
+        script {
+          def retries = 20
+          def sleepTime = 5
+          def healthCheckPassed = false
+
+          for (int i = 1; i <= retries; i++) {
+            echo "Attempt $i/$retries - Checking application health..."
+
+            try {
+              def response = sh(script: "curl -s http://192.168.1.100:9001/actuator/health", returnStdout: true).trim()
+              echo "Health check response: ${response}"
+
+              if (response.contains('\"status\":\"UP\"')) {
+                echo "Application is healthy!"
+                healthCheckPassed = true
+                break
+              } else {
+                echo "Status not UP yet, waiting..."
+              }
+            } catch (err) {
+              echo "Curl failed on attempt $i: ${err}"
+            }
+
+            sleep(sleepTime)
+          }
+
+          if (!healthCheckPassed) {
+            error("Application health check failed after ${retries * sleepTime} seconds.")
+          }
+        }
+      }
+    }
 
 
   }
