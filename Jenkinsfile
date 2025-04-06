@@ -111,6 +111,11 @@ pipeline {
     }
 
     stage('Verify Deployment') {
+      when {
+        expression {
+          return isFullDeployBranch(env.BRANCH_NAME)
+       }
+      }
       steps {
         script {
           def retries = 20
