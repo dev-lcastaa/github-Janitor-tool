@@ -92,7 +92,7 @@ pipeline {
       }
       steps {
         script {
-          sh "chmod +x /pipeline-scripts/clean-containers.sh"
+          sh "chmod +x ./pipeline-scripts/clean-containers.sh"
           def cleanupStatus = sh(script: "./pipeline-scripts/clean-containers.sh janitor-tool", returnStatus: true)
           if (cleanupStatus != 0) {
             error("Cleanup script failed with exit code ${cleanupStatus}. Stopping deployment.")
