@@ -1,7 +1,7 @@
 version: '3'
 services:
   janitor-tool:
-    image: lcastaa/janitor-tool:latest
+    image: lcastaa/git-hub-scm:latest
     ports:
       - "9001:9001"
     restart: unless-stopped
