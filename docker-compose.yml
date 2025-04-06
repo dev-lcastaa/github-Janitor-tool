@@ -1,6 +1,7 @@
 version: '3'
 services:
   janitor-tool:
+    container_name: janitor-tool
     image: lcastaa/git-hub-scm:latest
     ports:
       - "9001:9001"

@@ -91,13 +91,20 @@ pipeline {
         }
       }
       steps {
-         withCredentials([usernamePassword(credentialsId: 'docker-login', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-           sh """
+        script {
+          sh "chmod +x /pipeline-scripts/clean-containers.sh"
+          def cleanupStatus = sh(script: "./pipeline-scripts/clean-containers.sh janitor-tool", returnStatus: true)
+          if (cleanupStatus != 0) {
+            error("Cleanup script failed with exit code ${cleanupStatus}. Stopping deployment.")
+          }
+          withCredentials([usernamePassword(credentialsId: 'docker-login', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+            sh """
               echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
               docker compose pull
-           """
-         }
-         sh "docker compose up -d --force-recreate"
+            """
+          }
+          sh "docker compose up -d --force-recreate"
+        }
       }
     }
 
