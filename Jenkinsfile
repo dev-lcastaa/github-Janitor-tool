@@ -175,7 +175,7 @@ def isBuildOrPR(String branch) {
 }
 
 def isFullDeployBranch(String branch) {
-  return branch ==~ /main|develop/ || branch?.startsWith("feature/")
+  return branch ==~ /main|develop/
 }
 
 def notifyDiscord(String message) {
