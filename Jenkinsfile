@@ -17,7 +17,7 @@ pipeline {
       }
       steps {
         script {
-          notifyDiscord("Build started on branch `${env.BRANCH_NAME}`")
+          notifyDiscord("Build started on Aql-SCM-Hygiene-Tool on branch `${env.BRANCH_NAME}`")
         }
         echo "Building branch: ${env.BRANCH_NAME}"
         sh './mvnw clean compile -DGITHUB-API-KEY:$GITHUB_API_KEY'
@@ -155,12 +155,12 @@ pipeline {
   post {
     success {
       script {
-        sendDiscord("Pipeline *SUCCESSFUL* for branch `${env.BRANCH_NAME}`")
+        sendDiscord("Pipeline *SUCCESSFUL* for Aql-SCM-Hygiene-Tool on branch `${env.BRANCH_NAME}`")
       }
     }
     failure {
       script {
-        sendDiscord("Pipeline *FAILED* for branch `${env.BRANCH_NAME}`")
+        sendDiscord("Pipeline *FAILED* for Aql-SCM-Hygiene-Tool on branch `${env.BRANCH_NAME}`")
       }
     }
     always {
