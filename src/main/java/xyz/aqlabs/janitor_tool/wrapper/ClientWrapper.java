@@ -39,25 +39,18 @@ public class ClientWrapper {
         );
     }
 
-    // Method for POST request
-    public ResponseEntity<String> post(String url, Object body) {
-        HttpHeaders httpHeaders = createHeaders();
-        HttpEntity<Object> entity = new HttpEntity<>(body, httpHeaders);
-        return restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
-    }
-
-    // Method for PUT request
-    public ResponseEntity<String> put(String url, Object body) {
-        HttpHeaders httpHeaders = createHeaders();
-        HttpEntity<Object> entity = new HttpEntity<>(body, httpHeaders);
-        return restTemplate.exchange(url, HttpMethod.PUT, entity, String.class);
-    }
-
     // Method for DELETE request
-    public ResponseEntity<String> delete(String url) {
+    public WrapperResponse delete(String url) {
+        log.info("Request received DELETE {}", url);
         HttpHeaders httpHeaders = createHeaders();
         HttpEntity<String> entity = new HttpEntity<>(httpHeaders);
-        return restTemplate.exchange(url, HttpMethod.DELETE, entity, String.class);
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.DELETE, entity, String.class);
+        if(!response.hasBody())
+            throw new RuntimeException();
+        return new WrapperResponse(
+                response.getBody(),
+                response.getStatusCode().value()
+        );
     }
 
     // Helper method to create headers

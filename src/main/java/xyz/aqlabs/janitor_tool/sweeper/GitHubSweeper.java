@@ -3,13 +3,19 @@ package xyz.aqlabs.janitor_tool.sweeper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import xyz.aqlabs.janitor_tool.models.DeletedGitHubBranch;
+import xyz.aqlabs.janitor_tool.models.DeletionStatus;
 import xyz.aqlabs.janitor_tool.models.SweeperStatus;
 import xyz.aqlabs.janitor_tool.models.input.GitHubBranchCommit;
-import xyz.aqlabs.janitor_tool.models.input.GitHubCommit;
 import xyz.aqlabs.janitor_tool.models.input.GitHubRepo;
 import xyz.aqlabs.janitor_tool.models.input.GitHubRepoBranch;
+import xyz.aqlabs.janitor_tool.models.out.WrapperResponse;
+import xyz.aqlabs.janitor_tool.utils.Constants;
+import xyz.aqlabs.janitor_tool.utils.Tools;
 import xyz.aqlabs.janitor_tool.wrapper.ClientWrapper;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import static xyz.aqlabs.janitor_tool.utils.Constants.*;
@@ -22,13 +28,17 @@ public class GitHubSweeper implements Sweeper{
     private final int deleteBranchDaysOld;
     private final int deletePRsDaysOld;
     private final ClientWrapper wrapper;
+    private final List<String> ignoreList;
 
-    public GitHubSweeper(boolean branchDryRun, boolean pullRequestDryRun, int deleteBranchDaysOld, int deletePRsDaysOld, ClientWrapper wrapper) {
+    private List<DeletedGitHubBranch> deletedGitHubBranches = new ArrayList<>();
+
+    public GitHubSweeper(boolean branchDryRun, boolean pullRequestDryRun, int deleteBranchDaysOld, int deletePRsDaysOld, ClientWrapper wrapper, List<String> ignoreList) {
         this.branchDryRun = branchDryRun;
         this.pullRequestDryRun = pullRequestDryRun;
         this.deleteBranchDaysOld = deleteBranchDaysOld;
         this.deletePRsDaysOld = deletePRsDaysOld;
         this.wrapper = wrapper;
+        this.ignoreList = ignoreList;
     }
 
     @Override
@@ -40,12 +50,23 @@ public class GitHubSweeper implements Sweeper{
             return SweeperStatus.FAILED;
 
 
+        repos.forEach(repo -> {
+            log.info("Processing Repository {}",repo.getName());
+            log.info("Getting branches.....");
+            List<GitHubRepoBranch> branches = getRepoBranches(repo.getBranchesUrl());
+            if(branches == null)
+                throw new RuntimeException("Repo branches was null");
+           processBranches(repo, branches);
+        });
 
+        //close PRs
 
+        log.info("Now deleting collected branches....");
+        // delete branches
+        deleteBranches();
 
         return SweeperStatus.SUCCESSFUL;
     }
-
 
 
     // gets list of repos from the org
@@ -120,5 +141,60 @@ public class GitHubSweeper implements Sweeper{
         return branchCommits;
     }
 
+    // process branches from repos
+    private void processBranches(GitHubRepo repo, List<GitHubRepoBranch> branches) {
+
+        LocalDate deleteFrom = Tools.getLocalDateThreshHold(deleteBranchDaysOld);
+
+        //filter main & develop branches
+        branches.removeIf(gitHubRepoBranch -> ignoreList.contains(gitHubRepoBranch.getName()));
+
+        branches.forEach(branch -> {
+            List<GitHubBranchCommit> commits = getBranchCommits(repo.getBranchesUrl(), branch.getBranchCommit().getSha());
+            if (commits == null)
+                throw new RuntimeException("Failed to get commits from " + repo.getName());
+            log.info("Latest commit on branch is {}", commits.get(0).getCommit());
+            LocalDate lastCommitDate = Tools.getLocalDateFrom(commits.get(0).getCommit().getCommiter().getDate());
+            if (lastCommitDate.isBefore(deleteFrom)) {
+                DeletedGitHubBranch deletedGitHubBranch = new DeletedGitHubBranch(
+                        getOrg(repo.getUrl()),
+                        repo.getName(),
+                        branch.getName(),
+                        lastCommitDate,
+                        commits.get(0).getCommit().getAuthor().getName(),
+                        commits.get(0).getCommit().getAuthor().getEmail(),
+                        DeletionStatus.TBD
+
+                );
+                deletedGitHubBranches.add(deletedGitHubBranch);
+            }
+        });
+    }
+
+    // deleteBranches
+    private void deleteBranches(){
+        if(branchDryRun)
+            deletedGitHubBranches.forEach(branch -> {
+                log.info("[DRY-RUN] Delete branch {} @ {}", branch.getRepoName(), branch.getBranchName());
+                branch.setStatus(DeletionStatus.DELETE_MANUALLY);
+            });
+
+        if(!branchDryRun)
+            deletedGitHubBranches.forEach(branch -> {
+            log.info("Deleting branch {} @ {}", branch.getRepoName(), branch.getBranchName());
+            wrapper.delete(
+                    GITHUB_API_DELETE_BRANCH_API.formatted(
+                            branch.getOrganization(),
+                            branch.getRepoName(),
+                            branch.getBranchName()
+                    )
+            );
+        });
+    }
+
+    private String getOrg(String url){
+        return url.split("/")[4];
+
+    }
 
 }

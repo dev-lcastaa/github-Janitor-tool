@@ -36,8 +36,12 @@ public class Scheduler {
     @Value("${sweeper.pullRequest.delete.days}")
     private int pullRequestDeleteDays;
 
-    //Scheduled job
-    @Scheduled(cron = " * * * * ")
+    @Value("${sweeper.ignore.branches}")
+    private List<String> ignoreList;
+
+
+    //Scheduled job every Monday @ 7am
+    @Scheduled(cron = "0 7 * * 1")
     public void scheduledRun(){
         SweeperStatus sweeperStatus = run();
         log.info("Scheduled run status was {}", sweeperStatus);
@@ -57,13 +61,15 @@ public class Scheduler {
         return sweeper.sweep(orgId);
     }
 
+    // gets a sweeper
     private GitHubSweeper getGitHubSweeper(){
         return new GitHubSweeper(
                 branchDryRun,
                 pullRequestDryRun,
                 branchDeleteDays,
                 pullRequestDeleteDays,
-                wrapper
+                wrapper,
+                ignoreList
         );
     }
 
