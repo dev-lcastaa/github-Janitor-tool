@@ -5,6 +5,7 @@ pipeline {
      IMAGE_NAME = 'lcastaa/git-hub-scm'
      IMAGE_TAG = 'latest'
      DOCKER_CREDENTIALS_ID = 'docker-login'
+     GITHUB-API-KEY = 'GITHUB-API-KEY'
   }
 
   stages {
@@ -19,7 +20,7 @@ pipeline {
           notifyDiscord("Build started on branch `${env.BRANCH_NAME}`")
         }
         echo "Building branch: ${env.BRANCH_NAME}"
-        sh './mvnw clean compile'
+        sh './mvnw clean compile -DGITHUB-API-KEY:$GITHUB-API-KEY'
       }
     }
 
@@ -31,7 +32,7 @@ pipeline {
       }
       steps {
         echo "Testing branch: ${env.BRANCH_NAME}"
-        sh './mvnw test'
+        sh './mvnw test -DGITHUB-API-KEY:$GITHUB-API-KEY'
       }
     }
 
@@ -53,7 +54,7 @@ pipeline {
         }
       }
       steps {
-        sh './mvnw clean package -DskipTests'
+        sh './mvnw clean package -DskipTests -DGITHUB-API-KEY:$GITHUB-API-KEY'
       }
     }
 
