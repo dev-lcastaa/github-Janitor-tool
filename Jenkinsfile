@@ -1,5 +1,4 @@
 pipeline {
-
   agent { label 'jenkins-aql-node-3' }
 
   environment {
@@ -9,15 +8,16 @@ pipeline {
   }
 
   stages {
-
     stage('Build') {
-      notifyDiscord("Build started on branch ${env.BRANCH_NAME}")
       when {
         expression {
           return isBuildOrPR(env.BRANCH_NAME)
         }
       }
       steps {
+        script {
+          notifyDiscord("Build started on branch `${env.BRANCH_NAME}`")
+        }
         echo "Building branch: ${env.BRANCH_NAME}"
         sh './mvnw clean compile'
       }
@@ -53,7 +53,7 @@ pipeline {
         }
       }
       steps {
-       sh './mvnw clean package -DskipTests'
+        sh './mvnw clean package -DskipTests'
       }
     }
 
@@ -77,10 +77,10 @@ pipeline {
       steps {
         withCredentials([usernamePassword(credentialsId: 'docker-login', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
           sh '''
-             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-             docker push ${IMAGE_NAME}:${IMAGE_TAG}
-             docker logout
-             '''
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+            docker logout
+          '''
         }
       }
     }
@@ -98,6 +98,7 @@ pipeline {
           if (cleanupStatus != 0) {
             error("Cleanup script failed with exit code ${cleanupStatus}. Stopping deployment.")
           }
+
           withCredentials([usernamePassword(credentialsId: 'docker-login', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
             sh """
               echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
@@ -143,22 +144,27 @@ pipeline {
         }
       }
     }
-
-    post {
-        success {
-          sendDiscord("Pipeline *SUCCESSFUL* for branch `${env.BRANCH_NAME}`")
-        }
-        failure {
-          sendDiscord("Pipeline *FAILED* for branch `${env.BRANCH_NAME}`")
-        }
-        always {
-          echo 'Pipeline finished.'
-        }
-      }
-    }
   }
 
-// These helper methods are scoped for `when` conditions
+  post {
+    success {
+      script {
+        sendDiscord("Pipeline *SUCCESSFUL* for branch `${env.BRANCH_NAME}`")
+      }
+    }
+    failure {
+      script {
+        sendDiscord("Pipeline *FAILED* for branch `${env.BRANCH_NAME}`")
+      }
+    }
+    always {
+      echo 'Pipeline finished.'
+    }
+  }
+}
+
+// These helper methods must be outside the `pipeline` block
+
 def isBuildOrPR(String branch) {
   return branch ==~ /main|develop/ || branch?.startsWith("feature/") || env.CHANGE_ID
 }
@@ -176,4 +182,8 @@ def notifyDiscord(String message) {
            $DISCORD_WEBHOOK
     """
   }
+}
+
+def sendDiscord(String message) {
+  notifyDiscord(message)
 }
