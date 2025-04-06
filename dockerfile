@@ -1,6 +1,12 @@
 # Use an official OpenJDK runtime as the base image
 FROM openjdk:17-jdk-slim
 
+# Accept the build arg
+ARG GITHUB-API-KEY
+
+# Set it as an env var inside the container (optional)
+ENV GITHUB-API-KEY=${GITHUB-API-KEY}
+
 # Set the working directory inside the container
 WORKDIR /app
 

@@ -65,7 +65,7 @@ pipeline {
         }
       }
       steps {
-        sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+        sh "docker build --build-arg GITHUB-API-KEY=$GITHUB_API_KEY -t ${IMAGE_NAME}:${IMAGE_TAG} ."
       }
     }
 
