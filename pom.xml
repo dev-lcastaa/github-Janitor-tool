@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>xyz.aqlabs</groupId>
 	<artifactId>janitor-tool</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.1</version>
 	<name>janitor-tool</name>
 	<description>SCM Repository hygiene tool for AQLabs</description>
 

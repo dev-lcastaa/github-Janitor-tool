@@ -1,5 +1,12 @@
 pipeline {
-  agent any
+
+  agent { label 'jenkins-aql-node-3' }
+
+  environment {
+     IMAGE_NAME = 'lcastaa/git-hub-scm'
+     IMAGE_TAG = 'latest'
+     DOCKER_CREDENTIALS_ID = 'docker-login'
+  }
 
   stages {
 
@@ -38,6 +45,17 @@ pipeline {
       }
     }
 
+    stage('Packing executable JAR') {
+      when {
+        expression {
+          return isBuildOrPR(env.BRANCH_NAME)
+        }
+      }
+      steps {
+       sh './mvnw clean package -DskipTests'
+      }
+    }
+
     stage('Building Docker Images') {
       when {
         expression {
@@ -45,7 +63,7 @@ pipeline {
         }
       }
       steps {
-        echo "Building docker images"
+        sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
       }
     }
 
@@ -56,7 +74,13 @@ pipeline {
         }
       }
       steps {
-        echo "Publishing docker images"
+        withCredentials([usernamePassword(credentialsId: 'docker-login', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+          sh '''
+             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+             docker push ${IMAGE_NAME}:${IMAGE_TAG}
+             docker logout
+             '''
+        }
       }
     }
 
@@ -67,9 +91,38 @@ pipeline {
         }
       }
       steps {
-        echo "Deploying docker images"
+         sh """
+         docker compose pull
+         docker compose up -d
+         """
       }
     }
+
+    stage('Verify Deployment') {
+     steps {
+       script {
+         def retries = 10
+         def healthCheckPassed = false
+         for (int i = 0; i < retries; i++) {
+           def response = sh(script: "curl -s http://localhost:9001/actuator/health", returnStdout: true).trim()
+             if (response.contains('"status":"UP"')) {
+               echo "✅ Application is healthy!"
+               healthCheckPassed = true
+               break
+             } else {
+               echo "⏳ Waiting for app to become healthy... ($i/${retries})"
+               sleep(5)
+               }
+             }
+             if (!healthCheckPassed) {
+               error("❌ Application health check failed after ${retries} attempts.")
+             }
+           }
+         }
+       }
+     }
+
+
   }
 }
 
