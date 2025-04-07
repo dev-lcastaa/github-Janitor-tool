@@ -5,18 +5,29 @@ pipeline {
     IMAGE_NAME = 'lcastaa/git-hub-scm'
     IMAGE_TAG = 'latest'
     DOCKER_CREDENTIALS_ID = 'docker-login'
-    GITHUB_API_KEY = credentials('GITHUB-API-KEY')       // From Jenkins credentials
-    DISCORD_NOTIFICATION = credentials('DISCORD-NOTIFICATION') // From Jenkins credentials
+    GITHUB_API_KEY = credentials('GITHUB-API-KEY')
+    DISCORD_NOTIFICATION = credentials('DISCORD-NOTIFICATION')
   }
 
   stages {
+    stage('Pipeline Begins') {
+      when {
+        expression { isBuildOrPR(env.BRANCH_NAME) }
+      }
+      steps {
+        script {
+          notifyDiscord("━━ Pipeline triggered on *Aql-SCM-Hygiene-Tool* for branch `${env.BRANCH_NAME}` ━━")
+        }
+      }
+    }
+
     stage('Build') {
       when {
         expression { isBuildOrPR(env.BRANCH_NAME) }
       }
       steps {
         script {
-          notifyDiscord("Build started on *Aql-SCM-Hygiene-Tool* for branch `${env.BRANCH_NAME}`")
+          notifyDiscord("├─ Executing Build Stage....")
         }
         echo "Building branch: ${env.BRANCH_NAME}"
         sh "./mvnw clean compile -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_NOTIFICATION"
@@ -28,6 +39,9 @@ pipeline {
         expression { isBuildOrPR(env.BRANCH_NAME) }
       }
       steps {
+        script {
+          notifyDiscord("├─ Running Application Tests Stage....")
+        }
         echo "Testing branch: ${env.BRANCH_NAME}"
         sh "./mvnw test -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_NOTIFICATION"
       }
@@ -38,6 +52,9 @@ pipeline {
         expression { isBuildOrPR(env.BRANCH_NAME) }
       }
       steps {
+        script {
+          notifyDiscord("├─ Running Post-Test Tasks Stage....")
+        }
         echo "Publishing test results"
       }
     }
@@ -47,6 +64,9 @@ pipeline {
         expression { isBuildOrPR(env.BRANCH_NAME) }
       }
       steps {
+        script {
+          notifyDiscord("├─ Packaging JAR Stage....")
+        }
         sh "./mvnw clean package -DskipTests -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_NOTIFICATION"
       }
     }
@@ -56,6 +76,9 @@ pipeline {
         expression { isFullDeployBranch(env.BRANCH_NAME) }
       }
       steps {
+        script {
+          notifyDiscord("├─ Building Docker Image Stage....")
+        }
         sh "docker build --build-arg GITHUB_API_KEY=$GITHUB_API_KEY --build-arg DISCORD_NOTIFY=$DISCORD_NOTIFICATION -t ${IMAGE_NAME}:${IMAGE_TAG} ."
       }
     }
@@ -65,12 +88,15 @@ pipeline {
         expression { isFullDeployBranch(env.BRANCH_NAME) }
       }
       steps {
+        script {
+          notifyDiscord("├─ Publishing Docker Image Stage....")
+        }
         withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-          sh '''
-            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+          sh """
+            echo "\${DOCKER_PASS}" | docker login -u "\${DOCKER_USER}" --password-stdin
+            docker push \${IMAGE_NAME}:\${IMAGE_TAG}
             docker logout
-          '''
+          """
         }
       }
     }
@@ -81,6 +107,8 @@ pipeline {
       }
       steps {
         script {
+          notifyDiscord("├─ Deploying Docker Image Stage....")
+
           sh "chmod +x ./pipeline-scripts/clean-containers.sh"
           def cleanupStatus = sh(script: "./pipeline-scripts/clean-containers.sh janitor-tool", returnStatus: true)
           if (cleanupStatus != 0) {
@@ -89,7 +117,7 @@ pipeline {
 
           withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
             sh """
-              echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+              echo "\${DOCKER_PASS}" | docker login -u "\${DOCKER_USER}" --password-stdin
               docker compose pull
               docker compose up -d --force-recreate
               docker logout
@@ -105,6 +133,7 @@ pipeline {
       }
       steps {
         script {
+          notifyDiscord("├─ Verifying Deployment Stage....")
           def retries = 20
           def sleepTime = 5
           def healthCheckPassed = false
@@ -141,12 +170,12 @@ pipeline {
   post {
     success {
       script {
-        sendDiscord("Pipeline *SUCCESSFUL* for *Aql-SCM-Hygiene-Tool* on branch `${env.BRANCH_NAME}`")
+        sendDiscord("└─ Pipeline *SUCCESSFUL* for *Aql-SCM-Hygiene-Tool* on branch `${env.BRANCH_NAME}`")
       }
     }
     failure {
       script {
-        sendDiscord("Pipeline *FAILED* for *Aql-SCM-Hygiene-Tool* on branch `${env.BRANCH_NAME}`")
+        sendDiscord("└─ Pipeline *FAILED* for *Aql-SCM-Hygiene-Tool* on branch `${env.BRANCH_NAME}`")
       }
     }
     always {

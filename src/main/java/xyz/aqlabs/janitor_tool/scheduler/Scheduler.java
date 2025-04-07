@@ -45,7 +45,7 @@ public class Scheduler {
 
 
     //Scheduled job every Monday @ 7am
-    @Scheduled(cron = "0 7 * * 1")
+    @Scheduled(cron = "{sweeper.schedule}")
     public void scheduledRun(){
         SweeperStatus sweeperStatus = run();
         log.info("Scheduled run status was {}", sweeperStatus);
