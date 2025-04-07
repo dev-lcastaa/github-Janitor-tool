@@ -21,7 +21,7 @@ pipeline {
           notifyDiscord("Build started on Aql-SCM-Hygiene-Tool on branch `${env.BRANCH_NAME}`")
         }
         echo "Building branch: ${env.BRANCH_NAME}"
-        sh './mvnw clean compile -DGITHUB-API-KEY:$GITHUB_API_KEY -DDISCORD-NOTIFICATION:DISCORD_NOTIFICATION'
+        sh './mvnw clean compile -DGITHUB-API-KEY:$GITHUB_API_KEY -DDISCORD-NOTIFY:DISCORD_NOTIFICATION'
       }
     }
 
@@ -33,7 +33,7 @@ pipeline {
       }
       steps {
         echo "Testing branch: ${env.BRANCH_NAME}"
-        sh './mvnw test -DGITHUB-API-KEY:$GITHUB_API_KEY -DDISCORD-NOTIFICATION:DISCORD_NOTIFICATION'
+        sh './mvnw test -DGITHUB-API-KEY:$GITHUB_API_KEY -DDISCORD-NOTIFY:DISCORD_NOTIFICATION'
       }
     }
 
@@ -55,7 +55,7 @@ pipeline {
         }
       }
       steps {
-        sh './mvnw clean package -DskipTests -DGITHUB-API-KEY:$GITHUB_API_KEY -DDISCORD-NOTIFICATION:DISCORD_NOTIFICATION'
+        sh './mvnw clean package -DskipTests -DGITHUB-API-KEY:$GITHUB_API_KEY -DDISCORD-NOTIFY:DISCORD_NOTIFICATION'
       }
     }
 
