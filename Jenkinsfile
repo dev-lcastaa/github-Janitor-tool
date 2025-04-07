@@ -16,7 +16,7 @@ pipeline {
       }
       steps {
         script {
-          notifyDiscord("━━ Pipeline triggered on *Aql-SCM-Hygiene-Tool* for branch `${env.BRANCH_NAME}` ━━")
+          notifyDiscord("━━ Started *Aql-SCM-Hygiene-Tool* pipeline for branch `${env.BRANCH_NAME}` ━━")
         }
       }
     }
@@ -170,12 +170,12 @@ pipeline {
   post {
     success {
       script {
-        sendDiscord("└─ Pipeline *SUCCESSFUL* for *Aql-SCM-Hygiene-Tool* on branch `${env.BRANCH_NAME}`")
+        sendDiscord("└─ Pipeline *SUCCESSFUL*")
       }
     }
     failure {
       script {
-        sendDiscord("└─ Pipeline *FAILED* for *Aql-SCM-Hygiene-Tool* on branch `${env.BRANCH_NAME}`")
+        sendDiscord("└─ Pipeline *FAILED* ")
       }
     }
     always {
