@@ -5,18 +5,30 @@ pipeline {
     IMAGE_NAME = 'lcastaa/git-hub-scm'
     IMAGE_TAG = 'latest'
     DOCKER_CREDENTIALS_ID = 'docker-login'
-    GITHUB_API_KEY = credentials('GITHUB-API-KEY')       // From Jenkins credentials
-    DISCORD_NOTIFICATION = credentials('DISCORD-NOTIFICATION') // From Jenkins credentials
+    GITHUB_API_KEY = credentials('GITHUB-API-KEY')
+    DISCORD_NOTIFICATION = credentials('DISCORD-NOTIFICATION')
   }
 
   stages {
+    stage('Pipeline Begins'){
+      when {
+        expression {isBuildOrPR(env.BRANCH_NAME)}
+      }
+      steps {
+        script {
+          notifyDiscord("━━ Pipeline triggered on *Aql-SCM-Hygiene-Tool* for branch `${env.BRANCH_NAME}` ━━")
+        }
+      }
+    }
+
+
     stage('Build') {
       when {
         expression { isBuildOrPR(env.BRANCH_NAME) }
       }
       steps {
         script {
-          notifyDiscord("Build started on *Aql-SCM-Hygiene-Tool* for branch `${env.BRANCH_NAME}`")
+          notifyDiscord("├─ Executing Build Stage....")
         }
         echo "Building branch: ${env.BRANCH_NAME}"
         sh "./mvnw clean compile -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_NOTIFICATION"
@@ -28,6 +40,9 @@ pipeline {
         expression { isBuildOrPR(env.BRANCH_NAME) }
       }
       steps {
+        script {
+         notifyDiscord("├─ Running Application Tests Stage....")
+        }
         echo "Testing branch: ${env.BRANCH_NAME}"
         sh "./mvnw test -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_NOTIFICATION"
       }
@@ -36,6 +51,9 @@ pipeline {
     stage('Post-Test Tasks') {
       when {
         expression { isBuildOrPR(env.BRANCH_NAME) }
+      }
+      script {
+       notifyDiscord("├─ Running Post-Test Tasks Stage....")
       }
       steps {
         echo "Publishing test results"
@@ -46,6 +64,9 @@ pipeline {
       when {
         expression { isBuildOrPR(env.BRANCH_NAME) }
       }
+      script {
+       notifyDiscord("├─ Packaging JAR Stage....")
+      }
       steps {
         sh "./mvnw clean package -DskipTests -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_NOTIFICATION"
       }
@@ -55,6 +76,9 @@ pipeline {
       when {
         expression { isFullDeployBranch(env.BRANCH_NAME) }
       }
+      script {
+       notifyDiscord("├─ Building Docker Image Stage....")
+      }
       steps {
         sh "docker build --build-arg GITHUB_API_KEY=$GITHUB_API_KEY --build-arg DISCORD_NOTIFY=$DISCORD_NOTIFICATION -t ${IMAGE_NAME}:${IMAGE_TAG} ."
       }
@@ -63,6 +87,9 @@ pipeline {
     stage('Publishing Docker Image') {
       when {
         expression { isFullDeployBranch(env.BRANCH_NAME) }
+      }
+      script {
+        notifyDiscord("├─ Publishing Docker Image Stage....")
       }
       steps {
         withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -78,6 +105,9 @@ pipeline {
     stage('Deploying Docker Image') {
       when {
         expression { isFullDeployBranch(env.BRANCH_NAME) }
+      }
+      script {
+       notifyDiscord("├─ Deploying Docker Image Stage....")
       }
       steps {
         script {
@@ -102,6 +132,9 @@ pipeline {
     stage('Verify Deployment') {
       when {
         expression { isFullDeployBranch(env.BRANCH_NAME) }
+      }
+      script {
+        notifyDiscord("├─ Verifying Deployment Stage....")
       }
       steps {
         script {
@@ -141,12 +174,12 @@ pipeline {
   post {
     success {
       script {
-        sendDiscord("Pipeline *SUCCESSFUL* for *Aql-SCM-Hygiene-Tool* on branch `${env.BRANCH_NAME}`")
+        sendDiscord("└─ Pipeline *SUCCESSFUL* for *Aql-SCM-Hygiene-Tool* on branch `${env.BRANCH_NAME}`")
       }
     }
     failure {
       script {
-        sendDiscord("Pipeline *FAILED* for *Aql-SCM-Hygiene-Tool* on branch `${env.BRANCH_NAME}`")
+        sendDiscord("└─ Pipeline *FAILED* for *Aql-SCM-Hygiene-Tool* on branch `${env.BRANCH_NAME}`")
       }
     }
     always {
