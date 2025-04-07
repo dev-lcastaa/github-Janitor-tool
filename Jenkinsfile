@@ -6,7 +6,7 @@ pipeline {
     IMAGE_TAG = 'latest'
     DOCKER_CREDENTIALS_ID = 'docker-login'
     GITHUB_API_KEY = credentials('GITHUB-API-KEY')
-    DISCORD_NOTIFICATION = credentials('DISCORD_NOTIFICATION')
+    DISCORD_NOTIFICATION = credentials('DISCORD-NOTIFICATION')
   }
 
   stages {
