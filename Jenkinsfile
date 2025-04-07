@@ -38,7 +38,7 @@ pipeline {
         expression { isBuildOrPR(env.BRANCH_NAME) }
       }
       steps {
-        echo "📦 Publishing test results"
+        echo "Publishing test results"
       }
     }
 
@@ -110,14 +110,14 @@ pipeline {
           def healthCheckPassed = false
 
           for (int i = 1; i <= retries; i++) {
-            echo "🔍 Attempt $i/$retries - Checking application health..."
+            echo "Attempt $i/$retries - Checking application health..."
 
             try {
               def response = sh(script: "curl -s http://192.168.1.100:9001/actuator/health", returnStdout: true).trim()
               echo "Health check response: ${response}"
 
               if (response.contains('\"status\":\"UP\"')) {
-                echo "✅ Application is healthy!"
+                echo "Application is healthy!"
                 healthCheckPassed = true
                 break
               } else {
