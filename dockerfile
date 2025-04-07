@@ -1,24 +1,22 @@
 # Use an official OpenJDK runtime as the base image
 FROM openjdk:17-jdk-slim
 
-# Accept the build arg
-ARG GITHUB-API-KEY
+# Accept build args
+ARG GITHUB_API_KEY
+ARG DISCORD_NOTIFY
 
-# Accept arg
-ARG DISCORD-NOTIFY
+# Set them as environment variables
+ENV GITHUB_API_KEY=${GITHUB_API_KEY}
+ENV DISCORD_NOTIFY=${DISCORD_NOTIFY}
 
-# Set it as an env var inside the container (optional)
-ENV GITHUB-API-KEY=${GITHUB-API-KEY}
-ENV DISCORD-NOTIFY=${DISCORD-NOTIFY}
-
-# Set the working directory inside the container
+# Set the working directory
 WORKDIR /app
 
-# Copy the JAR file into the container
+# Copy the JAR
 COPY target/janitor-tool-0.0.1.jar app.jar
 
-# Expose the port the app runs on
+# Expose the app port
 EXPOSE 9001
 
-# Run the JAR file
+# Run the JAR
 ENTRYPOINT ["java", "-jar", "app.jar"]
