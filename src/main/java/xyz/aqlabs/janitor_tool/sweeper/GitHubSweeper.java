@@ -9,14 +9,13 @@ import xyz.aqlabs.janitor_tool.models.SweeperStatus;
 import xyz.aqlabs.janitor_tool.models.input.GitHubBranchCommit;
 import xyz.aqlabs.janitor_tool.models.input.GitHubRepo;
 import xyz.aqlabs.janitor_tool.models.input.GitHubRepoBranch;
-import xyz.aqlabs.janitor_tool.models.out.WrapperResponse;
-import xyz.aqlabs.janitor_tool.utils.Constants;
 import xyz.aqlabs.janitor_tool.utils.Tools;
 import xyz.aqlabs.janitor_tool.wrapper.ClientWrapper;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static xyz.aqlabs.janitor_tool.utils.Constants.*;
 
@@ -42,12 +41,12 @@ public class GitHubSweeper implements Sweeper{
     }
 
     @Override
-    public SweeperStatus sweep(String orgId){
+    public Map<SweeperStatus, List<DeletedGitHubBranch>> sweep(String orgId){
 
         log.info("Sweeping organization with ID: {}", orgId);
         List<GitHubRepo> repos = getOrgRepos(orgId);
         if(repos == null)
-            return SweeperStatus.FAILED;
+            return Map.of(SweeperStatus.FAILED, new ArrayList<>());
 
 
         repos.forEach(repo -> {
@@ -65,7 +64,7 @@ public class GitHubSweeper implements Sweeper{
         // delete branches
         deleteBranches();
 
-        return SweeperStatus.SUCCESSFUL;
+        return Map.of(SweeperStatus.SUCCESSFUL, deletedGitHubBranches);
     }
 
 

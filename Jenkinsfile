@@ -6,6 +6,7 @@ pipeline {
      IMAGE_TAG = 'latest'
      DOCKER_CREDENTIALS_ID = 'docker-login'
      GITHUB_API_KEY = 'GITHUB-API-KEY'
+     DISCORD_NOTIFICATION = 'DISCORD-NOTIFICATION'
   }
 
   stages {
@@ -65,7 +66,7 @@ pipeline {
         }
       }
       steps {
-        sh "docker build --build-arg GITHUB-API-KEY=$GITHUB_API_KEY -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+        sh "docker build --build-arg GITHUB-API-KEY=$GITHUB_API_KEY --build-arg DISCORD-NOTIFY=$DISCORD_NOTIFICATION -t ${IMAGE_NAME}:${IMAGE_TAG} ."
       }
     }
 

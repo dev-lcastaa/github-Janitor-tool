@@ -4,8 +4,12 @@ FROM openjdk:17-jdk-slim
 # Accept the build arg
 ARG GITHUB-API-KEY
 
+# Accept arg
+ARG DISCORD-NOTIFY
+
 # Set it as an env var inside the container (optional)
 ENV GITHUB-API-KEY=${GITHUB-API-KEY}
+ENV DISCORD-NOTIFY=${DISCORD-NOTIFY}
 
 # Set the working directory inside the container
 WORKDIR /app
