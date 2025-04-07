@@ -46,20 +46,21 @@ public class DiscordNotifier {
             return "✅ No branches were deleted during this sweep.";
         }
 
-        StringBuilder sb = new StringBuilder("🧹 **Branch Sweep Summary:**\n");
+        StringBuilder sb = new StringBuilder();
+        sb.append("🧹 **AspireQLabs Repository Sweep Summary**\n\n");
 
         Map<String, List<DeletedGitHubBranch>> grouped = deletedBranches.stream()
                 .collect(Collectors.groupingBy(DeletedGitHubBranch::getRepoName));
 
         for (Map.Entry<String, List<DeletedGitHubBranch>> entry : grouped.entrySet()) {
-            sb.append("\n**Repository:** ").append(entry.getKey()).append("\n");
+            sb.append("📁 **Repository:** `").append(entry.getKey()).append("`\n");
+            sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
             for (DeletedGitHubBranch branch : entry.getValue()) {
-                sb.append("• `").append(branch.getBranchName()).append("`\n")
-                        .append("  ├─ 👤 Author: ").append(branch.getAuthorName()).append(" (").append(branch.getAuthorEmail()).append(")\n")
-                        .append("  ├─ 🏢 Org: ").append(branch.getOrganization()).append("\n")
-                        .append("  ├─ 📆 Last Activity: ").append(branch.getLastActivity()).append("\n")
-                        .append("  └─ 🗑️ Status: ").append(branch.getStatus()).append("\n");
+                sb.append("🔀 **Branch:** `").append(branch.getBranchName()).append("`\n")
+                        .append(" -👤 **Author:** ").append(branch.getAuthorName()).append(" (`").append(branch.getAuthorEmail()).append("`)\n")
+                        .append(" -📅 **Last Activity:** ").append(branch.getLastActivity()).append("\n")
+                        .append(" -🗑️ **Status:** ").append(branch.getStatus()).append("\n\n");
             }
         }
 
