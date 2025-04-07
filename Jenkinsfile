@@ -2,82 +2,70 @@ pipeline {
   agent { label 'jenkins-aql-node-3' }
 
   environment {
-     IMAGE_NAME = 'lcastaa/git-hub-scm'
-     IMAGE_TAG = 'latest'
-     DOCKER_CREDENTIALS_ID = 'docker-login'
-     GITHUB_API_KEY = 'GITHUB-API-KEY'
-     DISCORD_NOTIFICATION = 'DISCORD-NOTIFICATION'
+    IMAGE_NAME = 'lcastaa/git-hub-scm'
+    IMAGE_TAG = 'latest'
+    DOCKER_CREDENTIALS_ID = 'docker-login'
+    GITHUB_API_KEY = credentials('GITHUB-API-KEY')       // From Jenkins credentials
+    DISCORD_NOTIFICATION = credentials('DISCORD-NOTIFICATION') // From Jenkins credentials
   }
 
   stages {
     stage('Build') {
       when {
-        expression {
-          return isBuildOrPR(env.BRANCH_NAME)
-        }
+        expression { isBuildOrPR(env.BRANCH_NAME) }
       }
       steps {
         script {
-          notifyDiscord("Build started on Aql-SCM-Hygiene-Tool on branch `${env.BRANCH_NAME}`")
+          notifyDiscord("Build started on *Aql-SCM-Hygiene-Tool* for branch `${env.BRANCH_NAME}`")
         }
         echo "Building branch: ${env.BRANCH_NAME}"
-        sh './mvnw clean compile -DGITHUB-API-KEY:$GITHUB_API_KEY -DDISCORD-NOTIFY:DISCORD_NOTIFICATION'
+        sh "./mvnw clean compile -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_NOTIFICATION"
       }
     }
 
     stage('Test') {
       when {
-        expression {
-          return isBuildOrPR(env.BRANCH_NAME)
-        }
+        expression { isBuildOrPR(env.BRANCH_NAME) }
       }
       steps {
         echo "Testing branch: ${env.BRANCH_NAME}"
-        sh './mvnw test -DGITHUB-API-KEY:$GITHUB_API_KEY -DDISCORD-NOTIFY:DISCORD_NOTIFICATION'
+        sh "./mvnw test -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_NOTIFICATION"
       }
     }
 
     stage('Post-Test Tasks') {
       when {
-        expression {
-          return isBuildOrPR(env.BRANCH_NAME)
-        }
+        expression { isBuildOrPR(env.BRANCH_NAME) }
       }
       steps {
-        echo "Publishing test results"
+        echo "📦 Publishing test results"
       }
     }
 
-    stage('Packing executable JAR') {
+    stage('Packaging Executable JAR') {
       when {
-        expression {
-          return isBuildOrPR(env.BRANCH_NAME)
-        }
+        expression { isBuildOrPR(env.BRANCH_NAME) }
       }
       steps {
-        sh './mvnw clean package -DskipTests -DGITHUB-API-KEY:$GITHUB_API_KEY -DDISCORD-NOTIFY:DISCORD_NOTIFICATION'
+        sh "./mvnw clean package -DskipTests -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_NOTIFICATION"
       }
     }
 
-    stage('Building Docker Images') {
+    stage('Building Docker Image') {
       when {
-        expression {
-          return isFullDeployBranch(env.BRANCH_NAME)
-        }
+        expression { isFullDeployBranch(env.BRANCH_NAME) }
       }
       steps {
-        sh "docker build --build-arg GITHUB-API-KEY=$GITHUB_API_KEY --build-arg DISCORD-NOTIFY=$DISCORD_NOTIFICATION -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+        sh "docker build --build-arg GITHUB_API_KEY=$GITHUB_API_KEY --build-arg DISCORD_NOTIFY=$DISCORD_NOTIFICATION -t ${IMAGE_NAME}:${IMAGE_TAG} ."
       }
     }
 
-    stage('Publishing Docker Images') {
+    stage('Publishing Docker Image') {
       when {
-        expression {
-          return isFullDeployBranch(env.BRANCH_NAME)
-        }
+        expression { isFullDeployBranch(env.BRANCH_NAME) }
       }
       steps {
-        withCredentials([usernamePassword(credentialsId: 'docker-login', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+        withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
           sh '''
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
             docker push ${IMAGE_NAME}:${IMAGE_TAG}
@@ -87,11 +75,9 @@ pipeline {
       }
     }
 
-    stage('Deploying docker images') {
+    stage('Deploying Docker Image') {
       when {
-        expression {
-          return isFullDeployBranch(env.BRANCH_NAME)
-        }
+        expression { isFullDeployBranch(env.BRANCH_NAME) }
       }
       steps {
         script {
@@ -101,22 +87,21 @@ pipeline {
             error("Cleanup script failed with exit code ${cleanupStatus}. Stopping deployment.")
           }
 
-          withCredentials([usernamePassword(credentialsId: 'docker-login', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+          withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
             sh """
               echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
               docker compose pull
+              docker compose up -d --force-recreate
+              docker logout
             """
           }
-          sh "docker compose up -d --force-recreate"
         }
       }
     }
 
     stage('Verify Deployment') {
       when {
-        expression {
-          return isFullDeployBranch(env.BRANCH_NAME)
-       }
+        expression { isFullDeployBranch(env.BRANCH_NAME) }
       }
       steps {
         script {
@@ -125,14 +110,14 @@ pipeline {
           def healthCheckPassed = false
 
           for (int i = 1; i <= retries; i++) {
-            echo "Attempt $i/$retries - Checking application health...."
+            echo "🔍 Attempt $i/$retries - Checking application health..."
 
             try {
               def response = sh(script: "curl -s http://192.168.1.100:9001/actuator/health", returnStdout: true).trim()
               echo "Health check response: ${response}"
 
               if (response.contains('\"status\":\"UP\"')) {
-                echo "Application is healthy!"
+                echo "✅ Application is healthy!"
                 healthCheckPassed = true
                 break
               } else {
@@ -156,12 +141,12 @@ pipeline {
   post {
     success {
       script {
-        sendDiscord("Pipeline *SUCCESSFUL* for Aql-SCM-Hygiene-Tool on branch `${env.BRANCH_NAME}`")
+        sendDiscord("Pipeline *SUCCESSFUL* for *Aql-SCM-Hygiene-Tool* on branch `${env.BRANCH_NAME}`")
       }
     }
     failure {
       script {
-        sendDiscord("Pipeline *FAILED* for Aql-SCM-Hygiene-Tool on branch `${env.BRANCH_NAME}`")
+        sendDiscord("Pipeline *FAILED* for *Aql-SCM-Hygiene-Tool* on branch `${env.BRANCH_NAME}`")
       }
     }
     always {
@@ -170,7 +155,7 @@ pipeline {
   }
 }
 
-// These helper methods must be outside the `pipeline` block
+// === HELPER FUNCTIONS ===
 
 def isBuildOrPR(String branch) {
   return branch ==~ /main|develop/ || branch?.startsWith("feature/") || env.CHANGE_ID
@@ -185,7 +170,7 @@ def notifyDiscord(String message) {
     sh """
       curl -H "Content-Type: application/json" \
            -X POST \
-           -d '{ "content": "@everyone ${message}" }' \
+           -d '{ "content": "${message}" }' \
            $DISCORD_WEBHOOK
     """
   }
