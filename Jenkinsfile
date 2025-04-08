@@ -5,8 +5,8 @@ pipeline {
     IMAGE_NAME = 'lcastaa/git-hub-scm'
     IMAGE_TAG = 'latest'
     DOCKER_CREDENTIALS_ID = 'docker-login'
-    GITHUB_API_KEY = credentials('GITHUB-API-KEY')
-    DISCORD_NOTIFICATION = credentials('DISCORD-NOTIFICATION')
+    GITHUB_API_KEY = credentials('GITHUB_API_KEY')
+    DISCORD_REPORT_NOTIFICATION = credentials('DISCORD_REPORT_NOTIFICATION')
   }
 
   stages {
@@ -30,7 +30,7 @@ pipeline {
           notifyDiscord("├─ Executing Build Stage....")
         }
         echo "Building branch: ${env.BRANCH_NAME}"
-        sh "./mvnw clean compile -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_NOTIFICATION"
+        sh "./mvnw clean compile -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_REPORT_NOTIFICATION"
       }
     }
 
@@ -43,7 +43,7 @@ pipeline {
           notifyDiscord("├─ Running Application Tests Stage....")
         }
         echo "Testing branch: ${env.BRANCH_NAME}"
-        sh "./mvnw test -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_NOTIFICATION"
+        sh "./mvnw test -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_REPORT_NOTIFICATION"
       }
     }
 
@@ -67,7 +67,7 @@ pipeline {
         script {
           notifyDiscord("├─ Packaging JAR Stage....")
         }
-        sh "./mvnw clean package -DskipTests -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_NOTIFICATION"
+        sh "./mvnw clean package -DskipTests -Dsweeper.api.key=$GITHUB_API_KEY -Dsweeper.discord.notify.endpoint=$DISCORD_REPORT_NOTIFICATION"
       }
     }
 
@@ -79,7 +79,7 @@ pipeline {
         script {
           notifyDiscord("├─ Building Docker Image Stage....")
         }
-        sh "docker build --build-arg GITHUB_API_KEY=$GITHUB_API_KEY --build-arg DISCORD_NOTIFY=$DISCORD_NOTIFICATION -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+        sh "docker build --build-arg GITHUB_API_KEY=$GITHUB_API_KEY --build-arg DISCORD_REPORT_NOTIFICATION=$DISCORD_REPORT_NOTIFICATION -t ${IMAGE_NAME}:${IMAGE_TAG} ."
       }
     }
 

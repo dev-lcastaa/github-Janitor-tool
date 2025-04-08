@@ -15,6 +15,4 @@ public class Tools {
         return LocalDate.now().minusDays(daysToDelete);
     }
 
-
-
 }

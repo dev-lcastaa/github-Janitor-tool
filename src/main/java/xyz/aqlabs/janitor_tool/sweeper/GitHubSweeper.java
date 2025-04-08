@@ -2,13 +2,18 @@ package xyz.aqlabs.janitor_tool.sweeper;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import xyz.aqlabs.janitor_tool.models.DeletedGitHubBranch;
+import xyz.aqlabs.janitor_tool.models.input.GitHubPullRequest;
+import xyz.aqlabs.janitor_tool.models.out.ClosedGitHubPullRequest;
+import xyz.aqlabs.janitor_tool.models.out.DeletedGitHubBranch;
 import xyz.aqlabs.janitor_tool.models.DeletionStatus;
 import xyz.aqlabs.janitor_tool.models.SweeperStatus;
 import xyz.aqlabs.janitor_tool.models.input.GitHubBranchCommit;
 import xyz.aqlabs.janitor_tool.models.input.GitHubRepo;
 import xyz.aqlabs.janitor_tool.models.input.GitHubRepoBranch;
+import xyz.aqlabs.janitor_tool.models.out.PullRequestStatus;
+import xyz.aqlabs.janitor_tool.utils.Constants;
 import xyz.aqlabs.janitor_tool.utils.Tools;
 import xyz.aqlabs.janitor_tool.wrapper.ClientWrapper;
 
@@ -29,7 +34,11 @@ public class GitHubSweeper implements Sweeper{
     private final ClientWrapper wrapper;
     private final List<String> ignoreList;
 
+    @Getter
     private List<DeletedGitHubBranch> deletedGitHubBranches = new ArrayList<>();
+
+    @Getter
+    private List<ClosedGitHubPullRequest> closedPullRequests = new ArrayList<>();
 
     public GitHubSweeper(boolean branchDryRun, boolean pullRequestDryRun, int deleteBranchDaysOld, int deletePRsDaysOld, ClientWrapper wrapper, List<String> ignoreList) {
         this.branchDryRun = branchDryRun;
@@ -41,30 +50,31 @@ public class GitHubSweeper implements Sweeper{
     }
 
     @Override
-    public Map<SweeperStatus, List<DeletedGitHubBranch>> sweep(String orgId){
+    public SweeperStatus sweep(String orgId){
 
         log.info("Sweeping organization with ID: {}", orgId);
         List<GitHubRepo> repos = getOrgRepos(orgId);
-        if(repos == null)
-            return Map.of(SweeperStatus.FAILED, new ArrayList<>());
+        if(repos == null) {
+            log.info("repos were null...");
+            return SweeperStatus.FAILED;
+        }
 
+        try {
+            repos.forEach(repo -> {
+                log.info("Processing Repository {}",repo.getName());
+                log.info("Getting branches.....");
+                List<GitHubRepoBranch> branches = getRepoBranches(repo.getBranchesUrl());
+                if(branches == null)
+                    throw new RuntimeException("Repo branches was null");
+                processPullRequests(repo.getUrl());
+                processBranches(repo, branches);
+            });
+        } catch (Exception e) {
+            log.error("Something happened please check logs...",e);
+            return SweeperStatus.FAILED;
+        }
 
-        repos.forEach(repo -> {
-            log.info("Processing Repository {}",repo.getName());
-            log.info("Getting branches.....");
-            List<GitHubRepoBranch> branches = getRepoBranches(repo.getBranchesUrl());
-            if(branches == null)
-                throw new RuntimeException("Repo branches was null");
-           processBranches(repo, branches);
-        });
-
-        //close PRs
-
-        log.info("Now deleting collected branches....");
-        // delete branches
-        deleteBranches();
-
-        return Map.of(SweeperStatus.SUCCESSFUL, deletedGitHubBranches);
+        return SweeperStatus.SUCCESSFUL;
     }
 
 
@@ -140,6 +150,29 @@ public class GitHubSweeper implements Sweeper{
         return branchCommits;
     }
 
+    // gets list of pull requests
+    private List<GitHubPullRequest> getPullRequests(String url){
+        ObjectMapper mapper = new ObjectMapper();
+        String pullRequestsApiResponse;
+
+        try{
+            pullRequestsApiResponse = wrapper.get(url + PULL_REQUESTS).getResponse();
+        } catch (Exception e) {
+            log.error("Failed to get pull requests from API", e);
+            return null;
+        }
+
+        List<GitHubPullRequest> pullRequests;
+        try {
+            pullRequests = mapper.readValue(pullRequestsApiResponse, new TypeReference<>() {});
+        } catch (Exception e) {
+            log.error("Failed to map response to pull requests obj", e);
+            return null;
+        }
+
+        return pullRequests;
+    }
+
     // process branches from repos
     private void processBranches(GitHubRepo repo, List<GitHubRepoBranch> branches) {
 
@@ -168,6 +201,19 @@ public class GitHubSweeper implements Sweeper{
                 deletedGitHubBranches.add(deletedGitHubBranch);
             }
         });
+
+        deleteBranches();
+    }
+
+    // process pull request
+    private void processPullRequests(String url){
+        log.info("Looking for pull requests in {}", url);
+        List<GitHubPullRequest> prs = getPullRequests(url);
+        if(prs == null)
+            throw new RuntimeException("pull requests were null");
+        log.info("Found {} pull requests...", prs.size());
+        List<GitHubPullRequest> prsToClose = filterPullRequests(prs);
+        closePullRequests(prsToClose);
     }
 
     // deleteBranches
@@ -191,9 +237,48 @@ public class GitHubSweeper implements Sweeper{
         });
     }
 
+    // close pull requests
+    private void closePullRequests(List<GitHubPullRequest> pullRequestsToClose){
+
+        pullRequestsToClose.forEach( pr -> {
+            log.info("Closing PR #{} created by user {} created @ {}",
+                    pr.getPrNumber(), pr.getUser().getLogin(), Tools.getLocalDateFrom(pr.getCreatedAt()));
+            if(pullRequestDryRun){
+                log.info("[DRY-RUN] Mock Closing PR...");
+                closedPullRequests.add(getClosedGitHubPullRequest(pr, false));
+            } else {
+                log.info("Closing PR...");
+                closedPullRequests.add(getClosedGitHubPullRequest(pr, true));
+                wrapper.patch(pr.getUrl(), CLOSE_PULL_STATE);
+            }
+
+        });
+    }
+
+    // filter pull requests
+    private List<GitHubPullRequest> filterPullRequests(List<GitHubPullRequest> prsToFilter) {
+        LocalDate thresholdDate = Tools.getLocalDateThreshHold(deletePRsDaysOld);
+        return prsToFilter.stream()
+                .filter(pr -> {
+                    LocalDate createdDate = Tools.getLocalDateFrom(pr.getCreatedAt());
+                    return !createdDate.isAfter(thresholdDate);
+                })
+                .toList();
+    }
+
+
     private String getOrg(String url){
         return url.split("/")[4];
 
+    }
+
+    private ClosedGitHubPullRequest getClosedGitHubPullRequest(GitHubPullRequest pr, boolean isClosed){
+        return new ClosedGitHubPullRequest(
+                pr.getUser().getLogin(),
+                pr.getUrl(),
+                pr.getPrNumber(),
+                isClosed ? PullRequestStatus.CLOSED : PullRequestStatus.TO_BE_CLOSED
+        );
     }
 
 }

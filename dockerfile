@@ -3,11 +3,11 @@ FROM openjdk:17-jdk-slim
 
 # Accept build args
 ARG GITHUB_API_KEY
-ARG DISCORD_NOTIFY
+ARG DISCORD_REPORT_NOTIFICATION
 
-# Set them as environment variables
+# Set environment variables
 ENV GITHUB_API_KEY=${GITHUB_API_KEY}
-ENV DISCORD_NOTIFY=${DISCORD_NOTIFY}
+ENV DISCORD_REPORT_NOTIFICATION=${DISCORD_REPORT_NOTIFICATION}
 
 # Set the working directory
 WORKDIR /app

@@ -12,6 +12,9 @@ public class Constants {
     public static final String GITHUB_API_COMMITS = GITHUB_API_ENDPOINT + "/repos/%s/%s" + "/commits?sha=%s" ;
     public static final String GITHUB_API_DELETE_BRANCH_API = GITHUB_API_ENDPOINT + "/repos/%s/%s/git/refs/heads/%s";
     public static final String BRANCH_APPENDAGE = "{/branch}";
+    public static final String PULL_REQUESTS = "/pulls";
+    public static final String CLOSE_PULL_STATE = "{\"state\": \"closed\"}";
+
 
 
 }
