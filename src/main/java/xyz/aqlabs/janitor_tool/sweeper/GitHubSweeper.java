@@ -140,6 +140,11 @@ public class GitHubSweeper implements Sweeper{
         return branchCommits;
     }
 
+    // gets list of pull requests
+    private List<?> getPullRequests(String url){
+        return new ArrayList<>();
+    }
+
     // process branches from repos
     private void processBranches(GitHubRepo repo, List<GitHubRepoBranch> branches) {
 
@@ -190,6 +195,8 @@ public class GitHubSweeper implements Sweeper{
             );
         });
     }
+
+
 
     private String getOrg(String url){
         return url.split("/")[4];
