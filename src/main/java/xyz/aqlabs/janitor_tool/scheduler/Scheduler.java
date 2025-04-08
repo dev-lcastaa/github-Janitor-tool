@@ -6,12 +6,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Value;
-import xyz.aqlabs.janitor_tool.models.DeletedGitHubBranch;
+import xyz.aqlabs.janitor_tool.models.ResultsType;
 import xyz.aqlabs.janitor_tool.models.SweeperStatus;
 import xyz.aqlabs.janitor_tool.sweeper.GitHubSweeper;
 import xyz.aqlabs.janitor_tool.utils.DiscordNotifier;
 import xyz.aqlabs.janitor_tool.wrapper.ClientWrapper;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -58,16 +59,28 @@ public class Scheduler {
         return sweeperStatus;
     }
 
-    // sweep repos
-    private SweeperStatus run(){
-        GitHubSweeper sweeper = getGitHubSweeper();
-        Map<SweeperStatus, List<DeletedGitHubBranch>> result = sweeper.sweep(orgId);
-        Map.Entry<SweeperStatus, List<DeletedGitHubBranch>> entry = result.entrySet().iterator().next();
-        notifier.sendResults(entry.getValue());
-        return entry.getKey();
+    // Post class creation method
+    @PostConstruct
+    public void init(){
+        log.info("Scheduler is initialized");
+        log.info("Sweeper is on stand by....");
     }
 
+
+    // sweep repos
+    private SweeperStatus run(){
+        Map<ResultsType, List<?>> sweeperFindings = new HashMap<>();
+        GitHubSweeper sweeper = getGitHubSweeper();
+
+        SweeperStatus status = sweeper.sweep(orgId);
+        sweeperFindings.put(ResultsType.CLOSED_PRS, sweeper.getClosedPullRequests());
+        sweeperFindings.put(ResultsType.DELETED_BRANCHES, sweeper.getDeletedGitHubBranches());
+
+        notifier.sendResults(sweeperFindings);
+        return status;
+    }
     // gets a sweeper
+
     private GitHubSweeper getGitHubSweeper(){
         return new GitHubSweeper(
                 branchDryRun,
@@ -77,12 +90,6 @@ public class Scheduler {
                 wrapper,
                 ignoreList
         );
-    }
-
-    @PostConstruct
-    public void init(){
-        log.info("Scheduler is initialized");
-        log.info("Sweeper is on stand by....");
     }
 
 

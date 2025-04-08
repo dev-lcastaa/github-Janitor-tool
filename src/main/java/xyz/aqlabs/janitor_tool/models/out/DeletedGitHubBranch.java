@@ -1,7 +1,8 @@
-package xyz.aqlabs.janitor_tool.models;
+package xyz.aqlabs.janitor_tool.models.out;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import xyz.aqlabs.janitor_tool.models.DeletionStatus;
 
 import java.time.LocalDate;
 
